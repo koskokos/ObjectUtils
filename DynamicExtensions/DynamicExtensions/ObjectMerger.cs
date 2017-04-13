@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace Chameleon.Common.Merge
+namespace DynamicExtensions
 {
     public class ObjectMerger : IObjectMerger
     {

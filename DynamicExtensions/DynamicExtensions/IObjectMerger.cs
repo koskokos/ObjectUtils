@@ -1,4 +1,4 @@
-﻿namespace Chameleon.Common.Merge
+﻿namespace DynamicExtensions
 {
     public interface IObjectMerger
     {

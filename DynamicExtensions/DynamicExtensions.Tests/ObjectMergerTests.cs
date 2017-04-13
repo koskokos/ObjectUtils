@@ -1,11 +1,8 @@
-﻿using Chameleon.Common.Merge;
-using NUnit.Framework;
+﻿using Xunit;
 using System;
 
-namespace ChameleonLogic.UnitTests.Merge
+namespace DynamicExtensions.Tests
 {
-
-    [TestFixture]
     public class ObjectMergerTests
     {
         IObjectMerger iOm = new ObjectMerger();
@@ -86,28 +83,28 @@ namespace ChameleonLogic.UnitTests.Merge
         #endregion
 
         #region Merge ArgumentCheck Tests
-        [Test]
-        [ExpectedException(typeof(ArgumentException), MatchType = MessageMatch.Contains, ExpectedMessage = "obj1")]
+        [Fact]
         public void Merge_CallWithClassTypeArgument_BadT1_ThrowArgumentException()
         {
-            iOm.Merge<First, I2, Aggregated1>(new First(), new Second());
+            var e = Assert.Throws<ArgumentException>(() => iOm.Merge<First, I2, Aggregated1>(new First(), new Second()));
+            Assert.Contains("obj1", e.Message);
         }
 
-        [Test]
-        [ExpectedException(typeof(ArgumentException), MatchType = MessageMatch.Contains, ExpectedMessage = "obj2")]
+        [Fact]
         public void Merge_CallWithClassTypeArgument_BadT2_ThrowArgumentException()
         {
-            iOm.Merge<I1, Second, Aggregated2>(new First(), new Second());
+            var e = Assert.Throws<ArgumentException>(() => iOm.Merge<I1, Second, Aggregated2>(new First(), new Second()));
+            Assert.Contains("obj2", e.Message);
         }
 
-        [Test]
-        [ExpectedException(typeof(ArgumentException), MatchType = MessageMatch.Contains, ExpectedMessage = "TOut")]
+        [Fact]
         public void Merge_CallWithClassTypeArgument_BadTOut_ThrowArgumentException()
         {
-            iOm.Merge<I1, I2, Aggregated2>(new First(), new Second());
+            var e = Assert.Throws<ArgumentException>(() => iOm.Merge<I1, I2, Aggregated2>(new First(), new Second()));
+            Assert.Contains("TOut", e.Message);
         }
 
-        [Test]
+        [Fact]
         [ExpectedException(typeof(ArgumentException), MatchType = MessageMatch.Regex, ExpectedMessage = @"T1.*T2.*TOut")]
         public void Merge_CallWithClassTypeArgument_TOutDoesntInheritT1andT2_ThrowArgumentException()
         {
