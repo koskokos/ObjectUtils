@@ -71,7 +71,7 @@ namespace DynamicExtensions
         #endregion
         static ObjectMerger()
         {
-            var assemblyBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(
+            var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
                 new AssemblyName("ObjectMerger_" + Guid.NewGuid().ToString("N")),
                 AssemblyBuilderAccess.Run);
             moduleBuilder = assemblyBuilder.DefineDynamicModule("MainModule");
@@ -175,7 +175,7 @@ namespace DynamicExtensions
                 MapProperties(typeBuilder, newMethods, prop);
             }
 
-            return typeBuilder.CreateType();
+            return typeBuilder.CreateTypeInfo().AsType();
         }
 
         public static TOut MergeInternal<TOut>(object[] objects, Type[] types)
@@ -190,17 +190,17 @@ namespace DynamicExtensions
             var t2 = typeof(T2);
             var tOut = typeof(TOut);
 
-            if (!t1.IsInterface)
+            if (!t1.GetTypeInfo().IsInterface)
             {
                 throw new ArgumentException("Type T1 of argument obj1 must be an interface.");
             }
 
-            if (!t2.IsInterface)
+            if (!t2.GetTypeInfo().IsInterface)
             {
                 throw new ArgumentException("Type T2 of argument obj2 must be an interface.");
             }
 
-            if (!tOut.IsInterface)
+            if (!tOut.GetTypeInfo().IsInterface)
             {
                 throw new ArgumentException("Type TOut of return value must be an interface.");
             }
