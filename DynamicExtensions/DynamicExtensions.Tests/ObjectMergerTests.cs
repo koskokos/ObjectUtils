@@ -61,12 +61,10 @@ namespace DynamicExtensions.Tests
             int Prop2 { get; set; }
         }
         public interface IAggregated : IFirst, ISecond { }
-
         public class First : IFirst
         {
             public int Prop1 { get; set; }
         }
-
         public class Second : ISecond
         {
             public int Prop2 { get; set; }
@@ -140,7 +138,7 @@ namespace DynamicExtensions.Tests
             var expected = func(val);
 
             var srcObj = new WithMethod(func);
-            var resObj = ObjectMerger.GetCachedOrCreateCtor<IWithMethodResult>( new[] { typeof(IWithMethod) })(new object[] { srcObj });
+            var resObj = ObjectMerger.GetCachedOrCreateCtor<IWithMethodResult>(new[] { typeof(IWithMethod) })(new object[] { srcObj });
             var actual = resObj.GetValue(val);
 
             Assert.Equal(expected, actual);
@@ -151,7 +149,7 @@ namespace DynamicExtensions.Tests
         {
             var val = 123;
             var obj = new WithGetter(val);
-            var res = ObjectMerger.GetCachedOrCreateCtor<IWithGetterResult>( new[] { typeof(IWithGetter) })(new object[] { obj });
+            var res = ObjectMerger.GetCachedOrCreateCtor<IWithGetterResult>(new[] { typeof(IWithGetter) })(new object[] { obj });
 
             Assert.Equal(val, res.Prop);
         }
@@ -162,7 +160,7 @@ namespace DynamicExtensions.Tests
             var val = 123;
             var obj = new WithSetter();
 
-            var res = ObjectMerger.GetCachedOrCreateCtor<IWithSetterResult>( new[] { typeof(IWithSetter) })(new object[] { obj });
+            var res = ObjectMerger.GetCachedOrCreateCtor<IWithSetterResult>(new[] { typeof(IWithSetter) })(new object[] { obj });
             res.Prop = val;
 
             Assert.Equal(val, obj.Prop);
@@ -171,14 +169,19 @@ namespace DynamicExtensions.Tests
         [Fact]
         public void MergeInternal_CallTwice_ResultsShouldHaveSameType()
         {
-            var obj = new Empty();
+            var res1 = ObjectMerger.GetCachedOrCreateType(new[] { typeof(IEmpty) }, typeof(IEmptyResult));
+            var res2 = ObjectMerger.GetCachedOrCreateType(new[] { typeof(IEmpty) }, typeof(IEmptyResult));
+            
+            Assert.True(res1 == res2, $"Types are not the same:\n{res1}\n{res2}");
+        }
 
-            var res1 = ObjectMerger.GetCachedOrCreateCtor<IEmptyResult>(new[] { typeof(IEmpty) })(new[] { obj });
-            var res2 = ObjectMerger.GetCachedOrCreateCtor<IEmptyResult>(new[] { typeof(IEmpty) })(new[] { obj });
-
-            var t1 = res1.GetType();
-            var t2 = res2.GetType();
-            Assert.True(res1.GetType() == res2.GetType(), $"Types are not the same:\n{t1}\n{t2}");
+        [Fact]
+        public void MergeInternal_CallTwice_ResultsShouldHaveSameConstructor()
+        {
+            var res1 = ObjectMerger.GetCachedOrCreateCtor<IEmptyResult>(new[] { typeof(IEmpty) });
+            var res2 = ObjectMerger.GetCachedOrCreateCtor<IEmptyResult>(new[] { typeof(IEmpty) });
+            
+            Assert.True(res1 == res2, $"Constructors are not the same:\n{res1}\n{res2}");
         }
         #endregion
 
