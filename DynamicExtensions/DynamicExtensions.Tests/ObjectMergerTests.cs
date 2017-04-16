@@ -8,46 +8,11 @@ namespace DynamicExtensions.Tests
         IObjectMerger iOm = new ObjectMerger();
 
         #region Interfaces&Classes
-        public interface ISuper { }
-        public interface IBase : ISuper { }
-        public interface I1 : IBase
-        {
-            int FirstProp { get; }
-            int Method(string param);
-        }
-        public interface I2
-        {
-            int SecondProp { get; }
-        }
-        public interface I3 { }
-        public interface IAggregatedBad : I1, I2, I3 { }
-        public interface IAggregated : I1, I2 { }
-        public class First : I1
-        {
-            readonly Func<string, int> methodBody;
-            public First(Func<string, int> methodBody = null)
-            {
-                this.methodBody = methodBody;
-            }
-            public int FirstProp { get; set; }
 
-            public int Method(string param) => methodBody(param);
-        }
-        public class Second : I2
-        {
-            public int SecondProp { get; set; }
-        }
-        public class Empty : ISuper { }
-        public class Aggregated1 : First, IAggregated
-        {
-            public int SecondProp { get; }
-        }
-        public class Aggregated2 : Second, IAggregated
-        {
-            public int FirstProp { get; }
+        public interface IEmpty { }
+        public interface IEmptyResult : IEmpty { }
+        public class Empty : IEmpty { }
 
-            public int Method(string param) => 0;
-        }
         public interface IWithGetter
         {
             int Prop { get; }
@@ -61,6 +26,7 @@ namespace DynamicExtensions.Tests
             }
             public int Prop { get; }
         }
+
         public interface IWithSetter
         {
             int Prop { set; }
@@ -70,6 +36,7 @@ namespace DynamicExtensions.Tests
         {
             public int Prop { get; set; }
         }
+
         public interface IWithMethod
         {
             int GetValue(int value);
@@ -84,42 +51,57 @@ namespace DynamicExtensions.Tests
             }
             public int GetValue(int value) => getValueBody(value);
         }
+
+        public interface IFirst
+        {
+            int Prop1 { get; set; }
+        }
+        public interface ISecond : IWithMethod
+        {
+            int Prop2 { get; set; }
+        }
+        public interface IAggregated : IFirst, ISecond { }
+
+        public class First : IFirst
+        {
+            public int Prop1 { get; set; }
+        }
+
+        public class Second : ISecond
+        {
+            public int Prop2 { get; set; }
+            public int GetValue(int value) => value;
+        }
+
         #endregion
 
         #region Merge ArgumentCheck Tests
         [Fact]
-        public void Merge_CallWithClassTypeArgument_BadT1_ThrowArgumentException()
+        public void Merge_CallWithClassTypeArgument_BadTIn_ThrowArgumentException()
         {
-            var e = Assert.Throws<ArgumentException>(() => iOm.Merge<First, I2, Aggregated1>(new First(), new Second()));
+            var e = Assert.Throws<ArgumentException>(() => ObjectMerger.GetCachedOrCreateCtor<IEmptyResult>(new[] { typeof(Empty) }));
             Assert.Contains("obj1", e.Message);
-        }
-
-        [Fact]
-        public void Merge_CallWithClassTypeArgument_BadT2_ThrowArgumentException()
-        {
-            var e = Assert.Throws<ArgumentException>(() => iOm.Merge<I1, Second, Aggregated2>(new First(), new Second()));
-            Assert.Contains("obj2", e.Message);
         }
 
         [Fact]
         public void Merge_CallWithClassTypeArgument_BadTOut_ThrowArgumentException()
         {
-            var e = Assert.Throws<ArgumentException>(() => iOm.Merge<I1, I2, Aggregated2>(new First(), new Second()));
+            var e = Assert.Throws<ArgumentException>(() => ObjectMerger.GetCachedOrCreateCtor<Empty>(new[] { typeof(IEmpty) }));
             Assert.Contains("TOut", e.Message);
         }
 
         [Fact]
-        public void Merge_CallWithClassTypeArgument_TOutDoesntInheritT1andT2_ThrowArgumentException()
+        public void Merge_CallWithClassTypeArgument_TOutDoesntInheritTIn_ThrowArgumentException()
         {
-            var e = Assert.Throws<ArgumentException>(() => iOm.Merge<IBase, I2, IAggregated>(new First(), new Second()));
-            Assert.Matches(@"T1.*T2.*TOut", e.Message);
+            var e = Assert.Throws<ArgumentException>(() => ObjectMerger.GetCachedOrCreateCtor<IEmpty>(new[] { typeof(IEmptyResult) }));
+            Assert.Matches(@"T1.*TOut", e.Message);
         }
 
         [Fact]
-        public void Merge_CallWithClassTypeArgument_TOutInheritsMoreThanT1andT2_ThrowArgumentException()
+        public void Merge_CallWithClassTypeArgument_TOutInheritsNotOnlyTInThrowArgumentException()
         {
-            var e = Assert.Throws<ArgumentException>(() =>iOm.Merge<I1, I2, IAggregatedBad>(new First(), new Second()));
-            Assert.Matches(@"T1.*T2.*TOut", e.Message);
+            var e = Assert.Throws<ArgumentException>(() => ObjectMerger.GetCachedOrCreateCtor<IAggregated>(new[] { typeof(IFirst) }));
+            Assert.Matches(@"T1.*TOut", e.Message);
         }
         #endregion
 
@@ -129,17 +111,16 @@ namespace DynamicExtensions.Tests
         {
             var val1 = 12;
             var val2 = 23;
-            var strVal = "15";
-            Func<string, int> func = int.Parse;
+            var val3 = 34;
 
-            var obj1 = new First(func) { FirstProp = val1 };
-            var obj2 = new Second { SecondProp = val2 };
+            var obj1 = new First { Prop1 = val1 };
+            var obj2 = new Second { Prop2 = val2 };
 
-            var res = iOm.Merge<I1, I2, IAggregated>(obj1, obj2);
+            var res = iOm.Merge<IFirst, ISecond, IAggregated>(obj1, obj2);
 
-            Assert.Equal(val1, res.FirstProp);
-            Assert.Equal(val2, res.SecondProp);
-            Assert.Equal(func(strVal), res.Method(strVal));
+            Assert.Equal(val1, res.Prop1);
+            Assert.Equal(val2, res.Prop2);
+            Assert.Equal(val3, res.GetValue(val3));
         }
         #endregion
 
@@ -147,7 +128,7 @@ namespace DynamicExtensions.Tests
         [Fact]
         public void MergeInternal_CallWithEmptyInterface_ShouldReturnNewObject()
         {
-            var res = ObjectMerger.GetCachedOrCreateCtor<IBase>(new[] { typeof(ISuper) })(new[] { new Empty() });
+            var res = ObjectMerger.GetCachedOrCreateCtor<IEmptyResult>(new[] { typeof(IEmpty) })(new[] { new Empty() });
             Assert.NotNull(res);
         }
 
@@ -192,8 +173,8 @@ namespace DynamicExtensions.Tests
         {
             var obj = new Empty();
 
-            var res1 = ObjectMerger.GetCachedOrCreateCtor<IBase>(new[] { typeof(ISuper) })(new[] { obj });
-            var res2 = ObjectMerger.GetCachedOrCreateCtor<IBase>(new[] { typeof(ISuper) })(new[] { obj });
+            var res1 = ObjectMerger.GetCachedOrCreateCtor<IEmptyResult>(new[] { typeof(IEmpty) })(new[] { obj });
+            var res2 = ObjectMerger.GetCachedOrCreateCtor<IEmptyResult>(new[] { typeof(IEmpty) })(new[] { obj });
 
             var t1 = res1.GetType();
             var t2 = res2.GetType();

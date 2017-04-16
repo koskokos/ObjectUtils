@@ -162,8 +162,14 @@ namespace DynamicExtensions
             constrGenerator.Emit(OpCodes.Ret);
 
             // add methods to map saved objects' methods
-            var methods = types.Select(t => t.GetMethods());
-            var methodsToFields = Enumerable.Zip(methods, fields, (m, f) => new { m, f });
+            var methodsToFields = Enumerable.Zip(fields, types, (f, t) => new { f, t })
+                .SelectMany(item =>
+                {
+                    var ti = item.t.GetTypeInfo();
+                    return Enumerable.Repeat(ti.DeclaredMethods, 1)
+                        .Union(ti.ImplementedInterfaces.Select(i => i.GetTypeInfo().DeclaredMethods))
+                        .Select(m => new { m, item.f });
+                });
 
             var newMethods = methodsToFields
                 .SelectMany(item => MapMethods(typeBuilder, item.m, item.f)) // in MapMethods methods are actually created by typeBuilder
