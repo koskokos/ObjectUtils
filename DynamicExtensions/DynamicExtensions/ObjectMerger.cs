@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 
@@ -49,13 +51,12 @@ namespace DynamicExtensions
         }
 
         static readonly object sync = new object();
-        static readonly Dictionary<TypeKey, Type> typesCache = new Dictionary<TypeKey, Type>();
+        static readonly IDictionary<TypeKey, Type> typesCache = new ConcurrentDictionary<TypeKey, Type>();
 
         static Type GetCachedOrCreateType(Type[] types, Type tOut)
         {
             var typeKey = new TypeKey(tOut, types);
-            Type tResult;
-            if (!typesCache.TryGetValue(typeKey, out tResult))
+            if (!typesCache.TryGetValue(typeKey, out Type tResult))
             {
                 lock (sync)
                 {
@@ -177,27 +178,50 @@ namespace DynamicExtensions
 
             return typeBuilder.CreateTypeInfo().AsType();
         }
-
-        public static TOut MergeInternal<TOut>(object[] objects, Type[] types)
+        
+        private static Func<object[], TOut> CreateConstructor<TOut>(Type source, params Type[] ctrArgs)
         {
-            var tResult = GetCachedOrCreateType(types, typeof(TOut));
-            return (TOut)Activator.CreateInstance(tResult, objects);
+            var constructorInfo = source.GetConstructor(ctrArgs);
+            if (constructorInfo == null)
+            {
+                return null;
+            }
+            var argsArray = Expression.Parameter(typeof(object[]));
+            var paramsExpression = new Expression[ctrArgs.Length];
+            for (var i = 0; i < ctrArgs.Length; i++)
+            {
+                var argType = ctrArgs[i];
+                paramsExpression[i] =
+                    Expression.Convert(Expression.ArrayIndex(argsArray, Expression.Constant(i)), argType);
+            }
+            Expression returnExpression = Expression.New(constructorInfo, paramsExpression);
+
+            returnExpression = Expression.Convert(returnExpression, typeof(TOut));
+            return (Func<object[], TOut>)Expression.Lambda(returnExpression, argsArray).Compile();
         }
+        
+
 
         TOut IObjectMerger.Merge<T1, T2, TOut>(T1 obj1, T2 obj2)
         {
             var t1 = typeof(T1);
             var t2 = typeof(T2);
+            var ctor = GetCachedOrCreateCtor<TOut>(new[] { typeof(T1), typeof(T2) });
+            return ctor(new object[] { obj1, obj2 });
+        }
+
+        public static Func<object[], TOut> GetCachedOrCreateCtor<TOut>(Type[] types) where TOut : class
+        {
             var tOut = typeof(TOut);
+            var typesCount = types.Length;
 
-            if (!t1.GetTypeInfo().IsInterface)
+            for (int i = 1; i <= typesCount; i++)
             {
-                throw new ArgumentException("Type T1 of argument obj1 must be an interface.");
-            }
-
-            if (!t2.GetTypeInfo().IsInterface)
-            {
-                throw new ArgumentException("Type T2 of argument obj2 must be an interface.");
+                var t = types[i - 1];
+                if (!t.GetTypeInfo().IsInterface)
+                {
+                    throw new ArgumentException($"Type T{i} of argument obj{i} must be an interface.");
+                }
             }
 
             if (!tOut.GetTypeInfo().IsInterface)
@@ -205,18 +229,18 @@ namespace DynamicExtensions
                 throw new ArgumentException("Type TOut of return value must be an interface.");
             }
 
-            var outInterfaces = tOut.GetInterfaces();
+            var outInterfaces = tOut.GetTypeInfo().GetInterfaces();
             var minimalInterfaces = outInterfaces.Except
                         (outInterfaces.SelectMany(t => t.GetInterfaces()).Distinct()).ToList();
 
 
-            if (minimalInterfaces.Count != 2 || !minimalInterfaces.Contains(t1) || !minimalInterfaces.Contains(t2))
+            if (minimalInterfaces.Count != typesCount || types.Any(t => !minimalInterfaces.Contains(t)))
             {
-                throw new ArgumentException("T1 and T2 must be only direct ancestors of TOut");
+                throw new ArgumentException($"{string.Join(" and ", types.Select((t,i) => "T" + (i + 1).ToString()))} must be only direct ancestors of TOut");
             }
 
-            return MergeInternal<TOut>(new object[] { obj1, obj2 }, new[] { t1, t2 });
+            var tResult = GetCachedOrCreateType(types, typeof(TOut));
+            return CreateConstructor<TOut>(tResult, types);
         }
-
     }
 }

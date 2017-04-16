@@ -1,6 +1,5 @@
 ﻿using Xunit;
 using System;
-using System.Text.RegularExpressions;
 
 namespace DynamicExtensions.Tests
 {
@@ -9,7 +8,8 @@ namespace DynamicExtensions.Tests
         IObjectMerger iOm = new ObjectMerger();
 
         #region Interfaces&Classes
-        public interface IBase { }
+        public interface ISuper { }
+        public interface IBase : ISuper { }
         public interface I1 : IBase
         {
             int FirstProp { get; }
@@ -37,7 +37,7 @@ namespace DynamicExtensions.Tests
         {
             public int SecondProp { get; set; }
         }
-        public class Empty : IBase { }
+        public class Empty : ISuper { }
         public class Aggregated1 : First, IAggregated
         {
             public int SecondProp { get; }
@@ -52,6 +52,7 @@ namespace DynamicExtensions.Tests
         {
             int Prop { get; }
         }
+        public interface IWithGetterResult : IWithGetter { }
         public class WithGetter : IWithGetter
         {
             public WithGetter(int val)
@@ -64,6 +65,7 @@ namespace DynamicExtensions.Tests
         {
             int Prop { set; }
         }
+        public interface IWithSetterResult : IWithSetter { }
         public class WithSetter : IWithSetter
         {
             public int Prop { get; set; }
@@ -72,6 +74,7 @@ namespace DynamicExtensions.Tests
         {
             int GetValue(int value);
         }
+        public interface IWithMethodResult : IWithMethod { }
         public class WithMethod : IWithMethod
         {
             readonly Func<int, int> getValueBody;
@@ -144,7 +147,7 @@ namespace DynamicExtensions.Tests
         [Fact]
         public void MergeInternal_CallWithEmptyInterface_ShouldReturnNewObject()
         {
-            var res = ObjectMerger.MergeInternal<IBase>(new[] { new Empty() }, new[] { typeof(IBase) });
+            var res = ObjectMerger.GetCachedOrCreateCtor<IBase>(new[] { typeof(ISuper) })(new[] { new Empty() });
             Assert.NotNull(res);
         }
 
@@ -156,7 +159,7 @@ namespace DynamicExtensions.Tests
             var expected = func(val);
 
             var srcObj = new WithMethod(func);
-            var resObj = ObjectMerger.MergeInternal<IWithMethod>(new object[] { srcObj }, new[] { typeof(IWithMethod) });
+            var resObj = ObjectMerger.GetCachedOrCreateCtor<IWithMethodResult>( new[] { typeof(IWithMethod) })(new object[] { srcObj });
             var actual = resObj.GetValue(val);
 
             Assert.Equal(expected, actual);
@@ -167,7 +170,7 @@ namespace DynamicExtensions.Tests
         {
             var val = 123;
             var obj = new WithGetter(val);
-            var res = ObjectMerger.MergeInternal<IWithGetter>(new object[] { obj }, new[] { typeof(IWithGetter) });
+            var res = ObjectMerger.GetCachedOrCreateCtor<IWithGetterResult>( new[] { typeof(IWithGetter) })(new object[] { obj });
 
             Assert.Equal(val, res.Prop);
         }
@@ -178,7 +181,7 @@ namespace DynamicExtensions.Tests
             var val = 123;
             var obj = new WithSetter();
 
-            var res = ObjectMerger.MergeInternal<IWithSetter>(new object[] { obj }, new[] { typeof(IWithSetter) });
+            var res = ObjectMerger.GetCachedOrCreateCtor<IWithSetterResult>( new[] { typeof(IWithSetter) })(new object[] { obj });
             res.Prop = val;
 
             Assert.Equal(val, obj.Prop);
@@ -189,8 +192,8 @@ namespace DynamicExtensions.Tests
         {
             var obj = new Empty();
 
-            var res1 = ObjectMerger.MergeInternal<IBase>(new[] { obj }, new[] { typeof(IBase) });
-            var res2 = ObjectMerger.MergeInternal<IBase>(new[] { obj }, new[] { typeof(IBase) });
+            var res1 = ObjectMerger.GetCachedOrCreateCtor<IBase>(new[] { typeof(ISuper) })(new[] { obj });
+            var res2 = ObjectMerger.GetCachedOrCreateCtor<IBase>(new[] { typeof(ISuper) })(new[] { obj });
 
             var t1 = res1.GetType();
             var t2 = res2.GetType();
