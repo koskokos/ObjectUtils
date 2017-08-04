@@ -1,88 +1,102 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Experiments
 {
-    public abstract class OperationResult
-    {
-        public abstract void Match(Action onSuccess, Action<IEnumerable<string>> onFail);
-        public abstract TOut Match<TOut>(Func<TOut> onSuccess, Func<IEnumerable<string>, TOut> onFail);
 
-        internal class OkResult : OperationResult
+    public static class OperationResult
+    {
+        public static OkOperationResult<T> Ok<T>(T value) => new OkOperationResult<T>(value);
+
+        public static OkOperationResult Ok() => OkOperationResult.Instance;
+
+        public static FailedOperationResult<TFail> Fail<TFail>(TFail fail) => new FailedOperationResult<TFail>(fail);
+    }
+
+    public sealed class OkOperationResult
+    {
+        public static OkOperationResult Instance { get; } = new OkOperationResult();
+        private OkOperationResult() { }
+    }
+
+    public sealed class OkOperationResult<TResult>
+    {
+        public TResult Value { get; }
+        internal OkOperationResult(TResult value)
         {
-            public static OperationResult Instance = new OkResult();
-            public override void Match(Action onSuccess, Action<IEnumerable<string>> onFail)
+            Value = value;
+        }
+    }
+
+    public sealed class FailedOperationResult<TFail> : OperationResult<TFail>
+    {
+        public TFail Reason { get; }
+        internal FailedOperationResult(TFail reason)
+        {
+            Reason = reason;
+        }
+        public override void Match(Action onSuccess, Action<TFail> onFail)
+            => onFail(Reason);
+
+        public override TOut Match<TOut>(Func<TOut> onSuccess, Func<TFail, TOut> onFail)
+            => onFail(Reason);
+    }
+
+    public abstract class OperationResult<TFail> 
+    {
+        public abstract void Match(Action onSuccess, Action<TFail> onFail);
+        public abstract TOut Match<TOut>(Func<TOut> onSuccess, Func<TFail, TOut> onFail);
+
+        internal class OkResult : OperationResult<TFail>
+        {
+            public static OperationResult<TFail> Instance = new OkResult();
+            public override void Match(Action onSuccess, Action<TFail> onFail)
                 => onSuccess();
 
-            public override TOut Match<TOut>(Func<TOut> onSuccess, Func<IEnumerable<string>, TOut> onFail)
+            public override TOut Match<TOut>(Func<TOut> onSuccess, Func<TFail, TOut> onFail)
                 => onSuccess();
         }
 
-        public static OperationResult<T> Ok<T>(T value) => new OperationResult<T>.OkResult(value);
-
-        public static OperationResult Ok() => OkResult.Instance;
-
-        public static FailedOperationResult Fail(IEnumerable<string> errors) => new FailedOperationResult(errors);
-
-        public static FailedOperationResult Fail(Exception ex) => new FailedOperationResult(new[] { ex.ToString() });
-
-        public static FailedOperationResult Fail(string error) => new FailedOperationResult(new[] { error });
-
+        public static implicit operator OperationResult<TFail>(OkOperationResult okResult) 
+            => OkResult.Instance;
     }
 
-    public class FailedOperationResult : OperationResult
+    public abstract class OperationResult<TResult, TFail>
     {
-        static IEnumerable<string> emptyErrors = Enumerable.Empty<string>();
+        public abstract void Match(Action<TResult> onSuccess, Action<TFail> onFail);
+        public abstract TOut Match<TOut>(Func<TResult, TOut> onSuccess, Func<TFail, TOut> onFail);
 
-        public IEnumerable<string> Errors { get; }
-        internal FailedOperationResult(IEnumerable<string> errors)
+        internal class OkResult : OperationResult<TResult, TFail>
         {
-            Errors = errors ?? emptyErrors;
-        }
-        public override void Match(Action onSuccess, Action<IEnumerable<string>> onFail)
-            => onFail(Errors);
-
-        public override TOut Match<TOut>(Func<TOut> onSuccess, Func<IEnumerable<string>, TOut> onFail)
-            => onFail(Errors);
-    }
-
-    public abstract class OperationResult<T>
-    {
-        public abstract void Match(Action<T> onSuccess, Action<IEnumerable<string>> onFail);
-        public abstract TOut Match<TOut>(Func<T, TOut> onSuccess, Func<IEnumerable<string>, TOut> onFail);
-
-        internal class OkResult : OperationResult<T>
-        {
-            private readonly T _value;
-            internal OkResult(T value)
+            private readonly OkOperationResult<TResult> _okResult;
+            internal OkResult(OkOperationResult<TResult> okResult)
             {
-                _value = value;
+                _okResult = okResult;
             }
-            public override void Match(Action<T> onSuccess, Action<IEnumerable<string>> onFail)
-                => onSuccess(_value);
+            public override void Match(Action<TResult> onSuccess, Action<TFail> onFail)
+                => onSuccess(_okResult.Value);
 
-            public override TOut Match<TOut>(Func<T, TOut> onSuccess, Func<IEnumerable<string>, TOut> onFail)
-                => onSuccess(_value);
+            public override TOut Match<TOut>(Func<TResult, TOut> onSuccess, Func<TFail, TOut> onFail)
+                => onSuccess(_okResult.Value);
         }
 
-        internal class FailResult : OperationResult<T>
+        internal class FailResult : OperationResult<TResult, TFail>
         {
-            private readonly FailedOperationResult _nonGenericResult;
-            internal FailResult(FailedOperationResult nonGenericResult)
+            private readonly FailedOperationResult<TFail> _nonGenericResult;
+            internal FailResult(FailedOperationResult<TFail> nonGenericResult)
             {
                 _nonGenericResult = nonGenericResult;
             }
-            public override void Match(Action<T> onSuccess, Action<IEnumerable<string>> onFail)
-                => onFail(_nonGenericResult.Errors);
+            public override void Match(Action<TResult> onSuccess, Action<TFail> onFail)
+                => onFail(_nonGenericResult.Reason);
 
-            public override TOut Match<TOut>(Func<T, TOut> onSuccess, Func<IEnumerable<string>, TOut> onFail)
-                => onFail(_nonGenericResult.Errors);
+            public override TOut Match<TOut>(Func<TResult, TOut> onSuccess, Func<TFail, TOut> onFail)
+                => onFail(_nonGenericResult.Reason);
         }
 
-        public static implicit operator OperationResult<T>(FailedOperationResult failResult)
-        {
-            return new FailResult(failResult);
-        }
+        public static implicit operator OperationResult<TResult, TFail>(OkOperationResult<TResult> okResult)
+            => new OkResult(okResult);
+
+        public static implicit operator OperationResult<TResult, TFail>(FailedOperationResult<TFail> failResult)
+            => new FailResult(failResult);
     }
 }
