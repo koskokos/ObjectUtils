@@ -11,15 +11,39 @@ namespace DynamicExtensions.Tests
 
         #region testdata
         readonly Func<MethodInfo, (object, MethodInfo)> fakeResolver = mi => (null, null);
-        
-        public static int Inc(int i) => i + 1;
-
-        private static Func<MethodInfo, (object, MethodInfo)> intToIntResolver = mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(Inc)));
 
         public interface I1
         {
-            int Inc(int i);
+            void M1(object i);
         }
+
+        #region StaticMethodsTestData
+        public class StaticMethodHit : Exception
+        {
+            public object Param { get; set; }
+        }
+
+        public static void StaticMethod(object i) => throw new StaticMethodHit { Param = i };
+
+        static Func<MethodInfo, (object, MethodInfo)> toStaticMethodResolver = mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(StaticMethod)));
+        #endregion
+
+        #region InstanceMethodsTestData
+        public class InstanceMethodHit : Exception
+        {
+            public object Target { get; set; }
+            public object Param { get; set; }
+        }
+
+        public class InstanceImpl
+        {
+            public void Method(object param) => throw new InstanceMethodHit { Target = this, Param = param };
+        }
+
+        static Func<MethodInfo, (object, MethodInfo)> getToInstanceMethodResolver(InstanceImpl target) =>
+            mi => (target, typeof(InstanceImpl).GetMethod(nameof(InstanceImpl.Method)));
+
+        #endregion
 
         #endregion
 
@@ -38,75 +62,78 @@ namespace DynamicExtensions.Tests
         [Fact]
         public void ImplementsOneMethod()
         {
-            var impl = ai.ImplementWith<I1>(intToIntResolver);
+            const int param = 236;
 
-            Assert.Equal(Inc(5), impl.Inc(5));
+            var impl = ai.ImplementWith<I1>(toStaticMethodResolver);
+
+            var hit = Assert.Throws<StaticMethodHit>(() => impl.M1(param));
+            Assert.Equal(param, hit.Param);
         }
-
-        #region ImplementsInstanceMethod
-        public class TestImpl
-        {
-            private int incrementer = 2;
-            public int Inc(int i) => i + incrementer;
-        }
-
+        
         [Fact]
         public void ImplementsInstanceMethod()
         {
-            var target = new TestImpl();
+            const int param = 873;
+            var target = new InstanceImpl();
 
-            var impl = ai.ImplementWith<I1>(mi => (target, typeof(TestImpl).GetMethod(nameof(TestImpl.Inc))));
+            var impl = ai.ImplementWith<I1>(getToInstanceMethodResolver(target));
 
-            Assert.Equal(target.Inc(5), impl.Inc(5));
+            var hit = Assert.Throws<InstanceMethodHit>(() => impl.M1(param));
+            Assert.Equal(param, hit.Param);
+            Assert.Equal(target, hit.Target);
         }
-        #endregion
 
         #region ImplementsMethodWith2Parameters
-        public interface I2
+
+        public class MethodHit2Params : Exception
         {
-            int Add(int a, int b);
+            public object P1 { get; set; }
+            public object P2 { get; set; }
         }
 
-        public static int Add(int a, int b) => a + b;
+        public interface I2
+        {
+            void Method(object a, object b);
+        }
+
+        public static void Method2Params(object a, object b) => throw new MethodHit2Params { P1 = a, P2 = b };
 
         [Fact]
         public void ImplementsMethodWith2Parameters()
         {
-            var impl = ai.ImplementWith<I2>(mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(Add))));
+            const int p1 = 17, p2 = 29;
+            var impl = ai.ImplementWith<I2>(mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(Method2Params))));
 
-            Assert.Equal(Add(2, 3), impl.Add(2, 3));
+            var hit = Assert.Throws<MethodHit2Params>(() => impl.Method(p1, p2));
+            Assert.Equal(p1, hit.P1);
+            Assert.Equal(p2, hit.P2);
         }
         #endregion
 
         #region ImplementsTwoDifferentlyResolvedMethods
         public interface I3
         {
-            int Add(int a, int b);
-            int Inc(int a);
-        }
-
-        public class IncInst
-        {
-            readonly int val = 7;
-            public int Inc(int a) => a + val;
+            void Method1(object p1, object p2);
+            void Method2(object p1);
         }
 
         [Fact]
         public void ImplementsTwoDifferentlyResolvedMethods()
         {
-            var incInst = new IncInst();
+            var inst = new InstanceImpl();
+
             var impl = ai.ImplementWith<I3>(mi =>
             {
-                if (mi == typeof(I3).GetMethod(nameof(I3.Add)))
-                    return (null, typeof(AutoImplementerTests).GetMethod(nameof(Add)));
-                else if (mi == typeof(I3).GetMethod(nameof(I3.Inc)))
-                    return (incInst, typeof(IncInst).GetMethod(nameof(IncInst.Inc)));
+                if (mi == typeof(I3).GetMethod(nameof(I3.Method1)))
+                    return (null, typeof(AutoImplementerTests).GetMethod(nameof(Method2Params)));
+                else if (mi == typeof(I3).GetMethod(nameof(I3.Method2)))
+                    return (inst, typeof(InstanceImpl).GetMethod(nameof(InstanceImpl.Method)));
                 else
                     throw new Exception();
             });
 
-            Assert.Equal(impl.Inc(5), incInst.Inc(5));
-            Assert.Equal(impl.Add(4, 5), Add(4, 5));
+            Assert.Throws<MethodHit2Params>(() => impl.Method1(1, 2));
+            Assert.Throws<InstanceMethodHit>(() => impl.Method2(1));
         }
         #endregion
 
