@@ -189,34 +189,34 @@ namespace DynamicExtensions.Tests
         // types with same name cannot be created so we need separate type name per test
         private string GetNewTypeName() => "NewType_" + Guid.NewGuid().ToString("N");
 
-        [Fact]
-        public void BuildType_ConstructedTypeHasProperNameAndIsClass()
-        {
-            var name = GetNewTypeName();
-            var type = ObjectMerger.CreateTypeBuilder(name).CreateTypeInfo();
+        //[Fact]
+        //public void BuildType_ConstructedTypeHasProperNameAndIsClass()
+        //{
+        //    var name = GetNewTypeName();
+        //    var type = ObjectMerger.CreateTypeBuilder(name).CreateTypeInfo();
 
-            Assert.Equal(name, type.Name);
-            Assert.True(type.IsClass, "Constructed type is not a class");
-        }
+        //    Assert.Equal(name, type.Name);
+        //    Assert.True(type.IsClass, "Constructed type is not a class");
+        //}
 
-        [Fact]
-        public void BuildType_TypesShouldBeInOneAssembly_FailsToCreate2TypesWithSameName()
-        {
-            var name = GetNewTypeName();
+        //[Fact]
+        //public void BuildType_TypesShouldBeInOneAssembly_FailsToCreate2TypesWithSameName()
+        //{
+        //    var name = GetNewTypeName();
 
-            ObjectMerger.CreateTypeBuilder(name);
+        //    ObjectMerger.CreateTypeBuilder(name);
 
-            Assert.Throws<ArgumentException>(delegate { ObjectMerger.CreateTypeBuilder(name);  });
-        }
+        //    Assert.Throws<ArgumentException>(delegate { ObjectMerger.CreateTypeBuilder(name);  });
+        //}
 
-        [Fact]
-        public void BuildType_TypesShouldBeInOneAssembly_ConstructedTypesAreInOneAssembly()
-        {
-            var type1 = ObjectMerger.CreateTypeBuilder(GetNewTypeName()).CreateTypeInfo();
-            var type2 = ObjectMerger.CreateTypeBuilder(GetNewTypeName()).CreateTypeInfo();
+        //[Fact]
+        //public void BuildType_TypesShouldBeInOneAssembly_ConstructedTypesAreInOneAssembly()
+        //{
+        //    var type1 = ObjectMerger.CreateTypeBuilder(GetNewTypeName()).CreateTypeInfo();
+        //    var type2 = ObjectMerger.CreateTypeBuilder(GetNewTypeName()).CreateTypeInfo();
 
-            Assert.Equal(type1.Assembly.FullName, type2.Assembly.FullName);
-        }
+        //    Assert.Equal(type1.Assembly.FullName, type2.Assembly.FullName);
+        //}
         #endregion
     }
 }

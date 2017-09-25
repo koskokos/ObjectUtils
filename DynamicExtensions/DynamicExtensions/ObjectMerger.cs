@@ -76,7 +76,7 @@ namespace DynamicExtensions
             //var tOut = typeof(TOut);
             var name = $"{tOut.Name}_impl_{Guid.NewGuid().ToString("N")}";
 
-            var typeBuilder = CreateTypeBuilder(name);
+            var typeBuilder = moduleBuilder.CreateTypeBuilder(name);
             // add interface implementation
             typeBuilder.AddInterfaceImplementation(tOut);
             // add fields to save objects
@@ -168,26 +168,10 @@ namespace DynamicExtensions
 
         static ObjectMerger()
         {
-            var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
-                new AssemblyName("ObjectMerger_" + Guid.NewGuid().ToString("N")),
-                AssemblyBuilderAccess.Run);
-            moduleBuilder = assemblyBuilder.DefineDynamicModule("MainModule");
+            moduleBuilder = General.GetModuleBuilder();
         }
 
         static readonly ModuleBuilder moduleBuilder;
-
-        public static TypeBuilder CreateTypeBuilder(string typename)
-        {
-            return moduleBuilder.DefineType(typename,
-                TypeAttributes.Public |
-                TypeAttributes.Class |
-                TypeAttributes.AutoClass |
-                TypeAttributes.AnsiClass |
-                TypeAttributes.BeforeFieldInit |
-                TypeAttributes.AutoLayout |
-                TypeAttributes.Sealed,
-                null);
-        }
 
         #region Constructors creation and caching
         internal class CtorKey
