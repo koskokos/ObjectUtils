@@ -61,26 +61,31 @@ namespace DynamicExtensions
                 mg.Emit(Ret);
             }
 
-            var constructorParamTypes = constructorParams.Select(target => target.GetType()).ToArray();
+            Type[] constructorParamTypes = null;
 
-            var cg = tb.DefineConstructor(
-                    MethodAttributes.Public,
-                    CallingConventions.Standard | CallingConventions.HasThis,
-                    constructorParamTypes)
-                .GetILGenerator();
-
-            for (int i = 0; i < fields.Count; i++)
+            if (constructorParams.Count > 0)
             {
-                cg.Emit(Ldarg_0);
-                cg.Emit(Ldarg, i + 1);
-                cg.Emit(Stfld, fields[i]);
-            }
+                constructorParamTypes = constructorParams.Select(target => target.GetType()).ToArray();
 
-            cg.Emit(Ret);
+                var cg = tb.DefineConstructor(
+                        MethodAttributes.Public,
+                        CallingConventions.Standard | CallingConventions.HasThis,
+                        constructorParamTypes)
+                    .GetILGenerator();
+
+                for (int i = 0; i < fields.Count; i++)
+                {
+                    cg.Emit(Ldarg_0);
+                    cg.Emit(Ldarg, i + 1);
+                    cg.Emit(Stfld, fields[i]);
+                }
+
+                cg.Emit(Ret);
+            }
 
             var tImpl = tb.CreateType();
 
-            var c = tImpl.GetConstructor(constructorParamTypes);
+            var c = tImpl.GetConstructor(constructorParamTypes ?? new Type[0]);
 
             return (T)c.Invoke(constructorParams.ToArray());
         }

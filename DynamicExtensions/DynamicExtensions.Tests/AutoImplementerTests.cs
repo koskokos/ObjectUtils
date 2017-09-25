@@ -14,15 +14,6 @@ namespace DynamicExtensions.Tests
         
         public static int Inc(int i) => i + 1;
 
-        public class TestImpl
-        {
-            private int incrementer = 2;
-            public int IncInst(int i) => i + incrementer;
-        }
-
-
-        private Func<MethodInfo, (object, MethodInfo)> toInstanceResolver = mi => (new TestImpl(), typeof(TestImpl).GetMethod(nameof(TestImpl.IncInst)));
-
         private static Func<MethodInfo, (object, MethodInfo)> intToIntResolver = mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(Inc)));
 
         public interface I1
@@ -52,12 +43,72 @@ namespace DynamicExtensions.Tests
             Assert.Equal(Inc(5), impl.Inc(5));
         }
 
+        #region ImplementsInstanceMethod
+        public class TestImpl
+        {
+            private int incrementer = 2;
+            public int Inc(int i) => i + incrementer;
+        }
+
         [Fact]
         public void ImplementsInstanceMethod()
         {
-            var impl = ai.ImplementWith<I1>(toInstanceResolver);
+            var target = new TestImpl();
 
-            Assert.Equal(new TestImpl().IncInst(5), impl.Inc(5));
+            var impl = ai.ImplementWith<I1>(mi => (target, typeof(TestImpl).GetMethod(nameof(TestImpl.Inc))));
+
+            Assert.Equal(target.Inc(5), impl.Inc(5));
         }
+        #endregion
+
+        #region ImplementsMethodWith2Parameters
+        public interface I2
+        {
+            int Add(int a, int b);
+        }
+
+        public static int Add(int a, int b) => a + b;
+
+        [Fact]
+        public void ImplementsMethodWith2Parameters()
+        {
+            var impl = ai.ImplementWith<I2>(mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(Add))));
+
+            Assert.Equal(Add(2, 3), impl.Add(2, 3));
+        }
+        #endregion
+
+        #region ImplementsTwoDifferentlyResolvedMethods
+        public interface I3
+        {
+            int Add(int a, int b);
+            int Inc(int a);
+        }
+
+        public class IncInst
+        {
+            readonly int val = 7;
+            public int Inc(int a) => a + val;
+        }
+
+        [Fact]
+        public void ImplementsTwoDifferentlyResolvedMethods()
+        {
+            var incInst = new IncInst();
+            var impl = ai.ImplementWith<I3>(mi =>
+            {
+                if (mi == typeof(I3).GetMethod(nameof(I3.Add)))
+                    return (null, typeof(AutoImplementerTests).GetMethod(nameof(Add)));
+                else if (mi == typeof(I3).GetMethod(nameof(I3.Inc)))
+                    return (incInst, typeof(IncInst).GetMethod(nameof(IncInst.Inc)));
+                else
+                    throw new Exception();
+            });
+
+            Assert.Equal(impl.Inc(5), incInst.Inc(5));
+            Assert.Equal(impl.Add(4, 5), Add(4, 5));
+        }
+        #endregion
+
     }
 }
