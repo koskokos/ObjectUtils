@@ -49,7 +49,7 @@ namespace DynamicExtensions
             constrGenerator.Emit(OpCodes.Ret);
 
             // add methods to map saved objects' methods
-            var methodsSet = new HashSet<MethodInfo>();
+            var methodsSet = new HashSet<string>();
 
             var methodsToFields = Enumerable.Zip(fields, types, (field, type) => new { field, type })
                 .SelectMany(item =>
@@ -57,7 +57,7 @@ namespace DynamicExtensions
                     var ti = item.type.GetTypeInfo();
                     return Enumerable.Repeat(ti.DeclaredMethods, 1)
                         .Concat(ti.ImplementedInterfaces.Select(i => i.GetTypeInfo().DeclaredMethods))
-                        .Select((IEnumerable<MethodInfo> methodInfo) => (methods: methodInfo.Where(m => methodsSet.Add(m)), item.field));
+                        .Select((IEnumerable<MethodInfo> methodInfo) => (methods: methodInfo.Where(m => methodsSet.Add(m.Name)), item.field));
                 });
 
             var newMethods = methodsToFields
