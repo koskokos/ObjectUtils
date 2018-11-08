@@ -23,9 +23,9 @@ namespace DynamicExtensions.Tests
             public object Param { get; set; }
         }
 
-        public static void StaticMethod(object i) => throw new StaticMethodHit { Param = i };
+        internal static void StaticMethod(object i) => throw new StaticMethodHit { Param = i };
 
-        static Func<MethodInfo, (object, MethodInfo)> toStaticMethodResolver = mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(StaticMethod)));
+        static readonly Func<MethodInfo, (object, MethodInfo)> toStaticMethodResolver = mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(StaticMethod)));
         #endregion
 
         #region InstanceMethodsTestData
@@ -40,7 +40,7 @@ namespace DynamicExtensions.Tests
             public void Method(object param) => throw new InstanceMethodHit { Target = this, Param = param };
         }
 
-        static Func<MethodInfo, (object, MethodInfo)> getToInstanceMethodResolver(InstanceImpl target) =>
+        static Func<MethodInfo, (object, MethodInfo)> GetToInstanceMethodResolver(InstanceImpl target) =>
             mi => (target, typeof(InstanceImpl).GetMethod(nameof(InstanceImpl.Method)));
 
         #endregion
@@ -76,7 +76,7 @@ namespace DynamicExtensions.Tests
             const int param = 873;
             var target = new InstanceImpl();
 
-            var impl = ai.ImplementWith<I1>(getToInstanceMethodResolver(target));
+            var impl = ai.ImplementWith<I1>(GetToInstanceMethodResolver(target));
 
             var hit = Assert.Throws<InstanceMethodHit>(() => impl.M1(param));
             Assert.Equal(param, hit.Param);
@@ -96,7 +96,7 @@ namespace DynamicExtensions.Tests
             void Method(object a, object b);
         }
 
-        public static void Method2Params(object a, object b) => throw new MethodHit2Params { P1 = a, P2 = b };
+        internal static void Method2Params(object a, object b) => throw new MethodHit2Params { P1 = a, P2 = b };
 
         [Fact]
         public void ImplementsMethodWith2Parameters()
