@@ -32,7 +32,7 @@ namespace DynamicExtensions
                 throw new ArgumentException($"Both types {t1} and {t2} must be interface types");
             }
 
-            var tRes = mb.DefineType($"IBoth_{t1.Name}_{t2.Name}_{NewGuid()}", TypeAttributes.Public | TypeAttributes.Interface);
+            var tRes = mb.DefineType($"IBoth_{t1.Name}_{t2.Name}_{NewGuid()}", TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract);
 
             tRes.AddInterfaceImplementation(t1);
             tRes.AddInterfaceImplementation(t2);
