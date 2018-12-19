@@ -23,7 +23,9 @@ namespace DynamicExtensions.Tests
             public object Param { get; set; }
         }
 
-        internal static void StaticMethod(object i) => throw new StaticMethodHit { Param = i };
+#pragma warning disable xUnit1013 // Public method should be marked as test
+        public static void StaticMethod(object i) => throw new StaticMethodHit { Param = i };
+#pragma warning restore xUnit1013 // Public method should be marked as test
 
         static readonly Func<MethodInfo, (object, MethodInfo)> toStaticMethodResolver = mi => (null, typeof(AutoImplementerTests).GetMethod(nameof(StaticMethod)));
         #endregion
@@ -96,7 +98,9 @@ namespace DynamicExtensions.Tests
             void Method(object a, object b);
         }
 
-        internal static void Method2Params(object a, object b) => throw new MethodHit2Params { P1 = a, P2 = b };
+#pragma warning disable xUnit1013 // Public method should be marked as test
+        public static void Method2Params(object a, object b) => throw new MethodHit2Params { P1 = a, P2 = b };
+#pragma warning restore xUnit1013 // Public method should be marked as test
 
         [Fact]
         public void ImplementsMethodWith2Parameters()
