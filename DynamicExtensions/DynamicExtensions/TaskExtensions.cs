@@ -30,6 +30,18 @@ namespace DynamicExtensions
             await item.ConfigureAwait(false);
             await action().ConfigureAwait(false);
         }
+        
+        public static async Task<TOut> Then<TOut>(this Task item, Func<Task<TOut>> generator)
+        {
+            await item.ConfigureAwait(false);
+            return await generator().ConfigureAwait(false);
+        }
+
+        public static async Task<TOut> Then<TOut>(this Task item, Func<TOut> generator)
+        {
+            await item.ConfigureAwait(false);
+            return generator();
+        }
 
         public static async Task Catch<TException>(this Task item, Action<TException> action) where TException : Exception
         {
