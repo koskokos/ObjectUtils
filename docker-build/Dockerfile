@@ -1,13 +1,9 @@
 FROM microsoft/dotnet:2.2-sdk AS build-env
 
-RUN nuget source Add -Name "GitHub nuget registry" \
-     -Source "https://nuget.pkg.github.com/koskokos/index.json" \
-     -UserName koskokos -Password ${GitHubNugetToken}
+WORKDIR /build
 
 COPY ./MiscellaneousUtils/MiscellaneousUtils.csproj /build/MiscellaneousUtils/MiscellaneousUtils.csproj
 COPY ./MiscellaneousUtils.Tests/MiscellaneousUtils.Tests.csproj /build/MiscellaneousUtils.Tests/MiscellaneousUtils.Tests.csproj
-
-WORKDIR /build
 
 RUN dotnet restore ./MiscellaneousUtils.Tests/MiscellaneousUtils.Tests.csproj
 
@@ -21,6 +17,8 @@ RUN dotnet test ./MiscellaneousUtils.Tests/MiscellaneousUtils.Tests.csproj --no-
 
 RUN dotnet pack ./MiscellaneousUtils/MiscellaneousUtils.csproj --no-build -c Release -o /out -p:NuGetVersion=${Version}
 
+ARG NuGetSource
+
 ARG NuGetApiKey
 
-RUN dotnet nuget push -Source "GitHub nuget registry" /out/MiscellaneousUtils.${Version}.nupkg
+RUN dotnet nuget push -s ${NuGetSource} -k ${NuGetApiKey} /out/MiscellaneousUtils.${Version}.nupkg
