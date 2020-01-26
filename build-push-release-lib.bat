@@ -5,8 +5,8 @@ cd src
 set NuGetSource=%1
 set NuGetApiKey=%2
 
-dotnet build -c Release -p:Version=%version% ./src/MiscellaneousUtils.sln
-dotnet test ./src/MiscellaneousUtils.Tests/MiscellaneousUtils.Tests.csproj --no-build -c Release
+dotnet build -c Release -p:Version=%version% ./MiscellaneousUtils.sln
+dotnet test ./MiscellaneousUtils.Tests/MiscellaneousUtils.Tests.csproj --no-build -c Release
 dotnet pack ./MiscellaneousUtils/MiscellaneousUtils.csproj --no-build -c Release -o /out -p:NuGetVersion=%version%
 
 dotnet nuget push -s %NuGetSource% -k %NuGetApiKey% /out/MiscellaneousUtils.%version%.nupkg

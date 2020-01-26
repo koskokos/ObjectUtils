@@ -98,7 +98,7 @@ namespace MiscellaneousUtils
                 {
                     methodGenerator.Emit(OpCodes.Ldarg, i + 1); // i + 1 because arg_0 is "this" argument and actual arguments start from 1
                 }
-                methodGenerator.Emit(OpCodes.Call, method);
+                methodGenerator.Emit(OpCodes.Callvirt, method);
                 methodGenerator.Emit(OpCodes.Ret);
                 return methodBuilder;
             });
