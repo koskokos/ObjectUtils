@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 
@@ -25,19 +26,28 @@ namespace MiscellaneousUtils
                 TypeAttributes.Sealed,
                 null);
 
+        static readonly Dictionary<(Type, Type), Type> _createdTypes = new Dictionary<(Type, Type), Type>();
+
         public static Type InheritBoth(Type t1, Type t2)
         {
-            if (!t1.IsInterface || !t2.IsInterface)
+            lock (_createdTypes)
             {
-                throw new ArgumentException($"Both types {t1} and {t2} must be interface types");
+                if (_createdTypes.TryGetValue((t1, t2), out Type storedType))
+                    return storedType;
+
+                if (!t1.IsInterface || !t2.IsInterface)
+                {
+                    throw new ArgumentException($"Both types {t1} and {t2} must be interface types");
+                }
+
+                var tRes = mb.DefineType($"Mixin_{t1.Name}_{t2.Name}", TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract);
+
+                tRes.AddInterfaceImplementation(t1);
+                tRes.AddInterfaceImplementation(t2);
+                var newType = tRes.CreateType();
+                _createdTypes.Add((t1, t2), newType);
+                return newType;
             }
-
-            var tRes = mb.DefineType($"Mixin_{t1.Name}_{t2.Name}", TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract);
-
-            tRes.AddInterfaceImplementation(t1);
-            tRes.AddInterfaceImplementation(t2);
-
-            return tRes.CreateType();
         }
     }
 }
